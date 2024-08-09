@@ -1,31 +1,67 @@
 import { z } from "zod";
-
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 
-export const postRouter = createTRPCRouter({
-  hello: publicProcedure
-    .input(z.object({ text: z.string() }))
-    .query(({ input }) => {
-      return {
-        greeting: `Hello ${input.text}`,
-      };
-    }),
+const idSchema = z.object({ id: z.string() });
 
-  create: publicProcedure
-    .input(z.object({ name: z.string().min(1) }))
-    .mutation(async ({ ctx, input }) => {
-      return ctx.db.post.create({
-        data: {
-          name: input.name,
-        },
+const userSchema = z.object({
+
+  name: z.string(),
+  email: z.string(),
+
+});
+
+const userUpdateSchema = z.object({
+
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+
+});
+
+export const postRouter = createTRPCRouter({
+
+  // get all users
+  getAll: publicProcedure.query(({ ctx }) => {
+    return ctx.prisma.user.findMany();
+  }),
+
+  // get user by id
+  getOne: publicProcedure
+    .input(idSchema)
+    .query(({ input, ctx }) => {
+      return ctx.prisma.user.findUnique({
+        where: idSchema.parse(input),
       });
     }),
 
-  getLatest: publicProcedure.query(async ({ ctx }) => {
-    const post = await ctx.db.post.findFirst({
-      orderBy: { createdAt: "desc" },
-    });
+  // create user
+  createUser: publicProcedure
+    .input(userSchema)
+    .mutation(({ input, ctx }) => {
+      return ctx.prisma.user.create({
+        data: userSchema.parse(input),
+      });
+    }),
 
-    return post ?? null;
-  }),
+  // update user
+  updateUser: publicProcedure
+    .input(userUpdateSchema)
+    .mutation(({ input, ctx }) => {
+      return ctx.prisma.user.update({
+        where: {
+          id: input.id.toString(),
+        },
+        data: userUpdateSchema.parse(input),
+      });
+    }),
+
+  // delete user
+  deleteUser: publicProcedure
+    .input(idSchema)
+    .mutation(({ input, ctx }) => {
+      return ctx.prisma.user.delete({
+        where: idSchema.parse(input),
+      });
+    }),
+  
 });
